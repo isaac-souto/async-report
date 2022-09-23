@@ -90,7 +90,7 @@ services:
       - report
 
   rabbitmq:
-    image: rabbitmq:3.8-management
+    image: rabbitmq:3.10.7-management
     hostname: rabbitmq
     container_name: rabbitmq
     environment:

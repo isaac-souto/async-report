@@ -40,7 +40,12 @@ namespace ReportWorker
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            ConfigureExchanges();
+            _model.ConfirmSelect();
+
+            _model.BasicQos(0, ushort.Parse(_rabbitQOS), false);
+
+            ConfigSchema(_rabbitReportExchange, _rabbitReportQueue);
+            ConfigSchema(_rabbitNotificationExchange, _rabbitNotificationQueue);
 
             AsyncEventingBasicConsumer consumer = new(_model);
 
@@ -53,25 +58,32 @@ namespace ReportWorker
             _model.Dispose();
         }
 
-        private void ConfigureExchanges()
+        private void ConfigSchema(string exchangeName, string queueName)
         {
-            _model.ExchangeDeclare(_rabbitReportExchange, "direct", true, false, null);
-            _model.QueueDeclare(_rabbitReportQueue, true, false, false, null);
-            _model.QueueBind(_rabbitReportQueue, _rabbitReportExchange, string.Empty, null);
+            //Unrouted
+            _model.ExchangeDeclare($"{exchangeName}_unrouted", "fanout", true, false);
+            _model.QueueDeclare($"{queueName}_unrouted", true, false, false);
+            _model.QueueBind($"{queueName}_unrouted", $"{exchangeName}_unrouted", string.Empty);
 
-            _model.ExchangeDeclare(_rabbitNotificationExchange, "direct", true, false, null);
-            _model.QueueDeclare(_rabbitNotificationQueue, true, false, false, null);
-            _model.QueueBind(_rabbitNotificationQueue, _rabbitNotificationExchange, string.Empty, null);
+            //Deadletter
+            _model.ExchangeDeclare($"{exchangeName}_deadletter", "fanout", true, false);
+            _model.QueueDeclare($"{queueName}_deadletter", true, false, false);
+            _model.QueueBind($"{queueName}_deadletter", $"{exchangeName}_deadletter", string.Empty);
 
-            _model.BasicQos(0, ushort.Parse(_rabbitQOS), false);
-
-            _model.ConfirmSelect();
+            _model.ExchangeDeclare(exchangeName, "direct", true, false, new Dictionary<string, object>() {
+                { "alternate-exchange", $"{exchangeName}_unrouted" }
+            });
+            _model.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>() {
+                { "x-dead-letter-exchange", $"{exchangeName}_deadletter" },
+                { "alternate-exchange", $"{exchangeName}_unrouted" }
+            });
+            _model.QueueBind(queueName, exchangeName, string.Empty);
         }
 
         private async Task Receive(object sender, BasicDeliverEventArgs eventArgs)
         {
             try
-            {                
+            {
                 Thread.Sleep(new Random().Next(1000, 5000));
 
                 var Props = _model.CreateBasicProperties();
@@ -79,8 +91,8 @@ namespace ReportWorker
                 Props.ContentType = "application/json";
 
                 var ReportData = JsonSerializer.Deserialize<ReportModel>(eventArgs.Body.Span);
-                
-                var Faker = new Faker("pt_BR");                                                
+
+                var Faker = new Faker("pt_BR");
                 var FileName = $"{Faker.Name.FullName()}.csv";
                 var FileBytes = GetFile();
 
@@ -117,7 +129,7 @@ namespace ReportWorker
 
             var Csv = new StringBuilder();
 
-            Csv.AppendLine("Nome;Email;Telefone;Endere�o;");
+            Csv.AppendLine("Nome;Email;Telefone;Endereço;");
 
             foreach (var client in Clients)
                 Csv.AppendLine($"{client.Name};{client.Email};{client.Phone};{client.Address};");

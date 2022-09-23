@@ -24,7 +24,7 @@ IHost host = Host.CreateDefaultBuilder(args)
                 .Execute(() => sp.GetRequiredService<ConnectionFactory>().CreateConnection()));
 
         services.AddTransient((sp) => sp.GetRequiredService<IConnection>().CreateModel());
-                
+
         services.AddSingleton((sp) => new MinioClient()
                 .WithEndpoint(Environment.GetEnvironmentVariable("MINIO_ENDPOINT"))
                 .WithProxy(new WebProxy(Environment.GetEnvironmentVariable("MINIO_ENDPOINT_PROXY")))

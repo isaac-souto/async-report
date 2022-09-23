@@ -14,9 +14,7 @@ namespace ReportApi.Controllers
         {
             model.ConfirmSelect();
 
-            model.ExchangeDeclare(Environment.GetEnvironmentVariable("RABBITMQ_REPORT_EXCHANGE"), "direct", true, false);
-            model.QueueDeclare(Environment.GetEnvironmentVariable("RABBITMQ_REPORT_QUEUE"), true, false, false);
-            model.QueueBind(Environment.GetEnvironmentVariable("RABBITMQ_REPORT_QUEUE"), Environment.GetEnvironmentVariable("RABBITMQ_REPORT_EXCHANGE"), string.Empty);
+            ConfigSchema(model, Environment.GetEnvironmentVariable("RABBITMQ_REPORT_EXCHANGE"), Environment.GetEnvironmentVariable("RABBITMQ_REPORT_QUEUE"));
 
             var prop = model.CreateBasicProperties();
             prop.DeliveryMode = 2;
@@ -32,6 +30,28 @@ namespace ReportApi.Controllers
             model.WaitForConfirmsOrDie(TimeSpan.FromSeconds(5));
 
             return Ok();
+        }
+
+        private static void ConfigSchema(IModel model, string exchangeName, string queueName)
+        {
+            //Unrouted
+            model.ExchangeDeclare($"{exchangeName}_unrouted", "fanout", true, false);
+            model.QueueDeclare($"{queueName}_unrouted", true, false, false);
+            model.QueueBind($"{queueName}_unrouted", $"{exchangeName}_unrouted", string.Empty);
+
+            //Deadletter
+            model.ExchangeDeclare($"{exchangeName}_deadletter", "fanout", true, false);
+            model.QueueDeclare($"{queueName}_deadletter", true, false, false);
+            model.QueueBind($"{queueName}_deadletter", $"{exchangeName}_deadletter", string.Empty);
+
+            model.ExchangeDeclare(exchangeName, "direct", true, false, new Dictionary<string, object>() {                
+                { "alternate-exchange", $"{exchangeName}_unrouted" }
+            });
+            model.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>() {
+                { "x-dead-letter-exchange", $"{exchangeName}_deadletter" },
+                { "alternate-exchange", $"{exchangeName}_unrouted" }
+            });
+            model.QueueBind(queueName, exchangeName, string.Empty);
         }
     }
 }

@@ -31,12 +31,10 @@ namespace NotificationHub.Workers
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            _model.ExchangeDeclare(_rabbitNotificationExchange, "direct", true, false, null);
-            _model.QueueDeclare(_rabbitNotificationQueue, true, false, false, null);
-            _model.QueueBind(_rabbitNotificationQueue, _rabbitNotificationExchange, string.Empty, null);
-
+        {            
             _model.BasicQos(0, ushort.Parse(_rabbitQOS), false);
+
+            ConfigSchema(_rabbitNotificationExchange, _rabbitNotificationQueue);
 
             AsyncEventingBasicConsumer consumer = new(_model);
 
@@ -47,6 +45,28 @@ namespace NotificationHub.Workers
             while (!stoppingToken.IsCancellationRequested) await Task.Delay(1000, stoppingToken);
 
             _model.Dispose();
+        }
+
+        private void ConfigSchema(string exchangeName, string queueName)
+        {
+            //Unrouted
+            _model.ExchangeDeclare($"{exchangeName}_unrouted", "fanout", true, false);
+            _model.QueueDeclare($"{queueName}_unrouted", true, false, false);
+            _model.QueueBind($"{queueName}_unrouted", $"{exchangeName}_unrouted", string.Empty);
+
+            //Deadletter
+            _model.ExchangeDeclare($"{exchangeName}_deadletter", "fanout", true, false);
+            _model.QueueDeclare($"{queueName}_deadletter", true, false, false);
+            _model.QueueBind($"{queueName}_deadletter", $"{exchangeName}_deadletter", string.Empty);
+
+            _model.ExchangeDeclare(exchangeName, "direct", true, false, new Dictionary<string, object>() {
+                { "alternate-exchange", $"{exchangeName}_unrouted" }
+            });
+            _model.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>() {
+                { "x-dead-letter-exchange", $"{exchangeName}_deadletter" },
+                { "alternate-exchange", $"{exchangeName}_unrouted" }
+            });
+            _model.QueueBind(queueName, exchangeName, string.Empty);
         }
 
         private async Task Receive(object sender, BasicDeliverEventArgs eventArgs)

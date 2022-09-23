@@ -14,7 +14,8 @@
       "commandName": "Docker",
       "launchBrowser": false,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/send",
-      "publishAllPorts": true
+      "publishAllPorts": true,
+      "httpPort": 81
     }
   },
   "$schema": "https://json.schemastore.org/launchsettings.json",
