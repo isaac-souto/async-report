@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32804.467
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReportWorker", "ReportWorker.csproj", "{DFD6254D-BCAE-42D3-BCBF-655DA80273D7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DFD6254D-BCAE-42D3-BCBF-655DA80273D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFD6254D-BCAE-42D3-BCBF-655DA80273D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFD6254D-BCAE-42D3-BCBF-655DA80273D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFD6254D-BCAE-42D3-BCBF-655DA80273D7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {314B7FCF-ADBA-4E65-9896-355FFD8D2F03}
+	EndGlobalSection
+EndGlobal
