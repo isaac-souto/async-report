@@ -5,6 +5,9 @@
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>47a34dad-f1fc-4df9-b075-db45cb81a9cd</ProjectGuid>
   </PropertyGroup>
+  <PropertyGroup>
+    <DockerServiceName>notificationhub</DockerServiceName>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>

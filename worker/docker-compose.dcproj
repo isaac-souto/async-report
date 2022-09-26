@@ -5,6 +5,9 @@
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>beb790b2-8cac-49dd-b57a-fdfe43f84c35</ProjectGuid>
   </PropertyGroup>
+  <PropertyGroup>
+    <DockerServiceName>reportworker</DockerServiceName>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>

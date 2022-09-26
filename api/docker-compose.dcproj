@@ -5,6 +5,9 @@
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>89e4e655-2a00-488f-883f-2aadce47b2e0</ProjectGuid>
   </PropertyGroup>
+  <PropertyGroup>
+    <DockerServiceName>reportapi</DockerServiceName>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
