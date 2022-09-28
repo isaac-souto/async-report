@@ -6,17 +6,3 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - 82:80
-    environment:
-      RABBITMQ_CONNECTIONSTRING: amqp://mc:mc2@rabbitmq:5672/main
-      RABBITMQ_CONNECTMAXATTEMPTS: 3
-      RABBITMQ_QOS: 5
-      RABBITMQ_NOTIFICATION_EXCHANGE: notification
-      RABBITMQ_NOTIFICATION_QUEUE: notification
-    networks:
-      - report
-
-networks:
-  report:
-    external: true

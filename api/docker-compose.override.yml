@@ -3,6 +3,18 @@ version: '3.4'
 services:
   reportapi:
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      ASPNETCORE_ENVIRONMENT: Development
+
+      RABBITMQ_CONNECTIONSTRING: amqp://mc:mc2@rabbitmq:5672/main
+      RABBITMQ_CONNECTMAXATTEMPTS: 3
+      RABBITMQ_QOS: 5
+      RABBITMQ_REPORT_EXCHANGE: report
+      RABBITMQ_REPORT_QUEUE: report
     ports:
-      - "80"
+      - 81:80
+    networks:
+      - report
+
+networks:
+  report:
+    external: true

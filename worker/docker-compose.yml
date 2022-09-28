@@ -6,22 +6,3 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    environment:
-      RABBITMQ_CONNECTIONSTRING: amqp://mc:mc2@rabbitmq:5672/main
-      RABBITMQ_CONNECTMAXATTEMPTS: 3
-      RABBITMQ_QOS: 5
-      RABBITMQ_REPORT_EXCHANGE: report
-      RABBITMQ_REPORT_QUEUE: report
-      RABBITMQ_NOTIFICATION_EXCHANGE: notification
-      RABBITMQ_NOTIFICATION_QUEUE: notification        
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ENDPOINT_PROXY: minio:9000      
-      MINIO_ACCESSKEY: Zu8VgBoZMU2xcmOEeS70
-      MINIO_SECRETKEY: xvnjYyFQyFs44iuUagi4kTHiOGvlK1PiX64LiwOy
-      MINIO_BUCKET_FILES: files
-    networks:
-      - report
-
-networks:
-  report:
-    external: true
