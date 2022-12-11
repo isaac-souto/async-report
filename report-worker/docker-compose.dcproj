@@ -3,10 +3,7 @@
   <PropertyGroup Label="Globals">
     <ProjectVersion>2.1</ProjectVersion>
     <DockerTargetOS>Linux</DockerTargetOS>
-    <ProjectGuid>beb790b2-8cac-49dd-b57a-fdfe43f84c35</ProjectGuid>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DockerServiceName>reportworker</DockerServiceName>
+    <ProjectGuid>ac7f5f2d-9a36-4346-8b23-c36162931ef0</ProjectGuid>
   </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.override.yml">

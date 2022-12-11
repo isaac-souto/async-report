@@ -3,11 +3,19 @@ using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using System.Text.Json;
+using OpenTelemetry.Context.Propagation;
+using System.Diagnostics;
+using OpenTelemetry;
+using NotificationHub.Helpers;
 
 namespace NotificationHub.Workers
 {
     public class NotificationWorker : BackgroundService
     {
+        static readonly ActivitySource Activity = new(nameof(NotificationWorker));
+
+        static readonly TextMapPropagator Propagator = Propagators.DefaultTextMapPropagator;
+
         readonly ILogger<NotificationWorker> _logger;
 
         readonly IModel _model;
@@ -73,6 +81,14 @@ namespace NotificationHub.Workers
         {
             try
             {
+                var ParentContext = Propagator.Extract(default, eventArgs.BasicProperties, ActivityHelper.ExtractTraceContextFromBasicProperties);
+
+                Baggage.Current = ParentContext.Baggage;
+
+                using var activity = Activity.StartActivity("Process Message (Notification)", ActivityKind.Consumer, ParentContext.ActivityContext);
+
+                ActivityHelper.AddActivityTags(activity);
+
                 NotificationModel MessageData = await JsonSerializer.DeserializeAsync<NotificationModel>(new MemoryStream(eventArgs.Body.ToArray()));
 
                 await _hub.Clients.Group(MessageData.UserId.ToString()).SendAsync("notification", MessageData);

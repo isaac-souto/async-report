@@ -1,8 +1,12 @@
 using Bogus;
 using Minio;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using ReportWorker.Helpers;
 using ReportWorker.Models;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -10,6 +14,10 @@ namespace ReportWorker
 {
     public class Worker : BackgroundService
     {
+        static readonly ActivitySource Activity = new(nameof(Worker));
+
+        static readonly TextMapPropagator Propagator = new TraceContextPropagator();
+
         readonly ILogger<Worker> _logger;
 
         readonly IModel _model;
@@ -86,9 +94,17 @@ namespace ReportWorker
             {
                 Thread.Sleep(new Random().Next(1000, 5000));
 
-                var Props = _model.CreateBasicProperties();
-                Props.DeliveryMode = 2;
-                Props.ContentType = "application/json";
+                var ParentContext = Propagator.Extract(default, eventArgs.BasicProperties, ActivityHelper.ExtractTraceContextFromBasicProperties);
+
+                Baggage.Current = ParentContext.Baggage;
+
+                using var activityReport = Activity.StartActivity("Process Message (Report)", ActivityKind.Consumer, ParentContext.ActivityContext);
+
+                var props = _model.CreateBasicProperties();
+                props.DeliveryMode = 2;
+                props.ContentType = "application/json";
+
+                ActivityHelper.AddActivityTags(activityReport);
 
                 var ReportData = JsonSerializer.Deserialize<ReportModel>(eventArgs.Body.Span);
 
@@ -105,7 +121,11 @@ namespace ReportWorker
                     Url = ObjectUrl
                 }));
 
-                _model.BasicPublish(_rabbitNotificationExchange, string.Empty, Props, MessageBytes);
+                using var activityNotification = Activity.StartActivity("RabbitMq Publish (Notification)", ActivityKind.Producer);
+
+                AddActivityToHeader(activityNotification, props);
+
+                _model.BasicPublish(_rabbitNotificationExchange, string.Empty, props, MessageBytes);
                 _model.WaitForConfirmsOrDie(TimeSpan.FromSeconds(5));
 
                 _model.BasicAck(eventArgs.DeliveryTag, false);
@@ -129,7 +149,7 @@ namespace ReportWorker
 
             var Csv = new StringBuilder();
 
-            Csv.AppendLine("Nome;Email;Telefone;EndereÃ§o;");
+            Csv.AppendLine("Nome;Email;Telefone;Endereço;");
 
             foreach (var client in Clients)
                 Csv.AppendLine($"{client.Name};{client.Email};{client.Phone};{client.Address};");
@@ -159,6 +179,27 @@ namespace ReportWorker
                 .WithHeaders(new Dictionary<string, string> {
                     { "response-content-type", "application/octet-stream" }
                 }));
+        }
+
+        private void AddActivityToHeader(Activity activity, IBasicProperties props)
+        {
+            Propagator.Inject(new PropagationContext(activity.Context, Baggage.Current), props, InjectContextIntoHeader);
+            activity?.SetTag("messaging.system", "rabbitmq");
+            activity?.SetTag("messaging.destination_kind", "queue");
+            activity?.SetTag("messaging.rabbitmq.queue", "sample");
+        }
+
+        private void InjectContextIntoHeader(IBasicProperties props, string key, string value)
+        {
+            try
+            {
+                props.Headers ??= new Dictionary<string, object>();
+                props.Headers[key] = value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to inject trace context.");
+            }
         }
     }
 }
