@@ -3,6 +3,8 @@ using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
+using Prometheus;
+using Prometheus.DotNetRuntime;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 using System.Diagnostics;
@@ -61,9 +63,27 @@ builder.Services.AddOpenTelemetryTracing(openTelemetryBuilder =>
 
 builder.Services.AddHostedService<NotificationWorker>();
 
+var builderCollector = DotNetRuntimeStatsBuilder.Default();
+
+builderCollector = DotNetRuntimeStatsBuilder.Customize()
+    .WithContentionStats(CaptureLevel.Informational)
+    .WithGcStats(CaptureLevel.Verbose)
+    .WithThreadPoolStats(CaptureLevel.Informational)
+    .WithExceptionStats(CaptureLevel.Errors)
+    .WithJitStats();
+
+builderCollector.RecycleCollectorsEvery(new TimeSpan(0, 20, 0));
+
+builderCollector.StartCollecting();
+
 var app = builder.Build();
 
 app.UseCors("AllowOrigin");
+
+app.UseHttpMetrics();
+
+app.UseMetricServer();
+
 app.MapHub<NotificationHub.Hubs.NotificationHub>("/notification");
 
 await app.RunAsync();

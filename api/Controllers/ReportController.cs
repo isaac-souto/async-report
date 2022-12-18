@@ -22,6 +22,13 @@ namespace ReportApi.Controllers
             _logger = logger;
         }
 
+        [HttpGet]
+        [Route("api/report")]
+        public IActionResult Get()
+        {
+            return Ok();
+        }
+
         [HttpPost]
         [Route("api/report/{userId:guid}")]
         public IActionResult Post([FromServices] IModel model, Guid userId)

@@ -4,6 +4,7 @@ name: async-report
 services:
   proxy:
     image: nginx:alpine
+    container_name: proxy
     volumes:
       - ./proxy/conf.d:/etc/nginx/conf.d/
     ports:
@@ -13,6 +14,8 @@ services:
       - 15672:15672
       - 9001:9001
       - 9000:9000
+      - 9090:9090
+      - 3001:3001
       - 16686:16686
     depends_on:
       - web
@@ -21,6 +24,8 @@ services:
       - report-worker
       - rabbitmq
       - minio
+      - jaeger
+      - prometheus
     networks:
       - report
 
@@ -28,6 +33,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile.dev
+    container_name: web
     environment:
       - WATCHPACK_POLLING=true
     volumes:
@@ -40,6 +46,10 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    container_name: api
+    mem_limit: 256m
+    mem_reservation: 128M
+    cpus: 0.25
     environment:
       RABBITMQ_CONNECTIONSTRING: amqp://mc:mc2@rabbitmq:5672/main
       RABBITMQ_CONNECTMAXATTEMPTS: 3
@@ -56,6 +66,10 @@ services:
     build:
       context: ./notification-hub
       dockerfile: Dockerfile
+    container_name: hub
+    mem_limit: 256m
+    mem_reservation: 128M
+    cpus: 0.25
     environment:
       RABBITMQ_CONNECTIONSTRING: amqp://mc:mc2@rabbitmq:5672/main
       RABBITMQ_CONNECTMAXATTEMPTS: 3
@@ -72,6 +86,10 @@ services:
     build:
       context: ./report-worker
       dockerfile: Dockerfile
+    container_name: worker
+    mem_limit: 256m
+    mem_reservation: 128M
+    cpus: 0.25
     environment:
       RABBITMQ_CONNECTIONSTRING: amqp://mc:mc2@rabbitmq:5672/main
       RABBITMQ_CONNECTMAXATTEMPTS: 3
@@ -104,6 +122,7 @@ services:
 
   minio:
     image: minio/minio
+    container_name: minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ACCESS_KEY: Zu8VgBoZMU2xcmOEeS70
@@ -113,9 +132,34 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    volumes:
+      - jaeger:/badger
     networks:
       - report
 
+  prometheus:
+    image: prom/prometheus:v2.24.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - report
+
+  grafana:
+    image: grafana/grafana:7.2.1
+    container_name: grafana
+    volumes:
+      - ./grafana/config/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - report
+
+volumes:
+  jaeger:
+
 networks:
   report:
+    external: true
     driver: bridge

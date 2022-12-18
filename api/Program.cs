@@ -2,6 +2,8 @@ using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
+using Prometheus;
+using Prometheus.DotNetRuntime;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 using ReportApi.Controllers;
@@ -39,7 +41,7 @@ builder.Services.AddOpenTelemetryTracing(openTelemetryBuilder =>
         .AddAspNetCoreInstrumentation(options =>
         {
             options.RecordException = true;
-            options.EnrichWithHttpRequest = ((activity, request) => Enrich(activity, request));            
+            options.EnrichWithHttpRequest = ((activity, request) => Enrich(activity, request));
         })
         .AddHttpClientInstrumentation((options) =>
         {
@@ -56,7 +58,7 @@ builder.Services.AddOpenTelemetryTracing(openTelemetryBuilder =>
                 activity.SetTag("stacktrace", exception.StackTrace);
             };
         })
-        .AddSource(nameof(ReportController))        
+        .AddSource(nameof(ReportController))
         .SetResourceBuilder(GetResourceBuilder(builder.Environment))
         .AddJaegerExporter(opts =>
         {
@@ -66,9 +68,26 @@ builder.Services.AddOpenTelemetryTracing(openTelemetryBuilder =>
         });
 });
 
+var builderCollector = DotNetRuntimeStatsBuilder.Default();
+
+builderCollector = DotNetRuntimeStatsBuilder.Customize()
+    .WithContentionStats(CaptureLevel.Informational)
+    .WithGcStats(CaptureLevel.Verbose)
+    .WithThreadPoolStats(CaptureLevel.Informational)
+    .WithExceptionStats(CaptureLevel.Errors)
+    .WithJitStats();
+
+builderCollector.RecycleCollectorsEvery(new TimeSpan(0, 20, 0));
+
+builderCollector.StartCollecting();
+
 var app = builder.Build();
 
 app.UseCors("AllowOrigin");
+
+app.UseHttpMetrics();
+
+app.UseMetricServer();
 
 app.MapControllers();
 
@@ -103,8 +122,8 @@ static ResourceBuilder GetResourceBuilder(IWebHostEnvironment webHostEnvironment
         .AddAttributes(
             new KeyValuePair<string, object>[]
             {
-                        new("deployment.environment", webHostEnvironment.EnvironmentName),
-                        new("host.name", Environment.MachineName),
+                new("deployment.environment", webHostEnvironment.EnvironmentName),
+                new("host.name", Environment.MachineName),
             })
         .AddEnvironmentVariableDetector();
 }

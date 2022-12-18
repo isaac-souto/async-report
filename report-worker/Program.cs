@@ -61,7 +61,7 @@ IHost host = Host.CreateDefaultBuilder(args)
                     opts.ExportProcessorType = ExportProcessorType.Simple;
                 });
         });
-
+        
         services.AddHostedService<Worker>();
     })
     .Build();
