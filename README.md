@@ -22,4 +22,4 @@ Repositório de exemplo de estudo com fluxo de geração de relatório de forma 
 - Jaeger (Traces) - [http://localhost:16686](http://localhost:16686)
 - Phometeus (Métricas) - [http://localhost:9090](http://localhost:9090)
 - Grafana (Dashboard) - [http://localhost:3001](http://localhost:3001)
-- Grafana Loki (Logs) - Em Breve
+- Grafana Loki (Logs)

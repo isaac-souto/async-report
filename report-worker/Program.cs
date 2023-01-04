@@ -10,6 +10,7 @@ using System.Net;
 using System.Reflection;
 
 IHost host = Host.CreateDefaultBuilder(args)
+    .ConfigureLogging((ctx, cgf) => cgf.ClearProviders())
     .ConfigureServices(services =>
     {
         services.AddSingleton((sp) => new ConnectionFactory()
@@ -61,7 +62,7 @@ IHost host = Host.CreateDefaultBuilder(args)
                     opts.ExportProcessorType = ExportProcessorType.Simple;
                 });
         });
-        
+
         services.AddHostedService<Worker>();
     })
     .Build();
@@ -69,7 +70,7 @@ IHost host = Host.CreateDefaultBuilder(args)
 await host.RunAsync();
 
 static ResourceBuilder GetResourceBuilder()
-{    
+{
     var version = Assembly
         .GetExecutingAssembly()
         .GetCustomAttribute<AssemblyFileVersionAttribute>()
@@ -80,7 +81,7 @@ static ResourceBuilder GetResourceBuilder()
         .AddService("ReportWorker", serviceVersion: version)
         .AddAttributes(
             new KeyValuePair<string, object>[]
-            {                        
+            {
                 new("host.name", Environment.MachineName),
             })
         .AddEnvironmentVariableDetector();

@@ -7,9 +7,20 @@ using Prometheus;
 using Prometheus.DotNetRuntime;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
-using System.Diagnostics;
+using Serilog;
+using Serilog.Formatting.Compact;
+using Serilog.Sinks.Grafana.Loki;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.ConfigureLogging((_, loggingBuilder) => loggingBuilder.ClearProviders())
+                .UseSerilog((ctx, cfg) =>
+                {
+                    cfg.Enrich.WithProperty("Application", ctx.HostingEnvironment.ApplicationName)
+                       .Enrich.WithProperty("Environment", ctx.HostingEnvironment.EnvironmentName)
+                       .WriteTo.Console(new RenderedCompactJsonFormatter())
+                       .WriteTo.GrafanaLoki(uri: $"{Environment.GetEnvironmentVariable("LOKI__ENDPOINT")}:{Environment.GetEnvironmentVariable("LOKI__PORT")}");
+                });
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton((sp) => new ConnectionFactory()
@@ -79,10 +90,9 @@ builderCollector.StartCollecting();
 var app = builder.Build();
 
 app.UseCors("AllowOrigin");
-
 app.UseHttpMetrics();
-
 app.UseMetricServer();
+app.UseSerilogRequestLogging();
 
 app.MapHub<NotificationHub.Hubs.NotificationHub>("/notification");
 

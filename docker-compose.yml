@@ -26,6 +26,7 @@ services:
       - minio
       - jaeger
       - prometheus
+      - loki
     networks:
       - report
 
@@ -56,6 +57,8 @@ services:
       RABBITMQ_QOS: 5
       RABBITMQ_REPORT_EXCHANGE: report
       RABBITMQ_REPORT_QUEUE: report
+      LOKI__ENDPOINT: http://loki
+      LOKI__PORT: 3100
     depends_on:
       - rabbitmq
       - minio
@@ -76,6 +79,8 @@ services:
       RABBITMQ_QOS: 5
       RABBITMQ_NOTIFICATION_EXCHANGE: notification
       RABBITMQ_NOTIFICATION_QUEUE: notification
+      LOKI__ENDPOINT: http://loki
+      LOKI__PORT: 3100
     depends_on:
       - rabbitmq
       - minio
@@ -103,6 +108,8 @@ services:
       MINIO_ACCESSKEY: Zu8VgBoZMU2xcmOEeS70
       MINIO_SECRETKEY: xvnjYyFQyFs44iuUagi4kTHiOGvlK1PiX64LiwOy
       MINIO_BUCKET_FILES: files
+      LOKI__ENDPOINT: http://loki
+      LOKI__PORT: 3100
     depends_on:
       - rabbitmq
       - minio
@@ -153,6 +160,16 @@ services:
       - ./grafana/config/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - report
+
+  loki:
+    image: grafana/loki:master
+    container_name: base-loki
+    volumes:
+      - ./loki/config/loki-config.yaml:/etc/loki/loki-config.yaml
+      - ./loki/data:/data/loki
+    command: -config.file=/etc/loki/local-config.yaml
     networks:
       - report
 

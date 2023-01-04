@@ -6,6 +6,8 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using ReportWorker.Helpers;
 using ReportWorker.Models;
+using Serilog.Sinks.Grafana.Loki;
+using Serilog;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -18,7 +20,7 @@ namespace ReportWorker
 
         static readonly TextMapPropagator Propagator = new TraceContextPropagator();
 
-        readonly ILogger<Worker> _logger;
+        readonly Serilog.ILogger _log;
 
         readonly IModel _model;
 
@@ -34,9 +36,8 @@ namespace ReportWorker
 
         readonly string _rabbitNotificationQueue;
 
-        public Worker(ILogger<Worker> logger, IModel model, MinioClient minio)
-        {
-            _logger = logger;
+        public Worker(IModel model, MinioClient minio)
+        {            
             _model = model;
             _minio = minio;
             _rabbitQOS = Environment.GetEnvironmentVariable("RABBITMQ_QOS");
@@ -44,6 +45,16 @@ namespace ReportWorker
             _rabbitReportQueue = Environment.GetEnvironmentVariable("RABBITMQ_REPORT_QUEUE");
             _rabbitNotificationExchange = Environment.GetEnvironmentVariable("RABBITMQ_NOTIFICATION_EXCHANGE");
             _rabbitNotificationQueue = Environment.GetEnvironmentVariable("RABBITMQ_NOTIFICATION_QUEUE");
+
+            _log = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .Enrich.WithThreadId()
+                .WriteTo.Console()
+                .WriteTo.GrafanaLoki(
+                    $"{Environment.GetEnvironmentVariable("LOKI__ENDPOINT")}:{Environment.GetEnvironmentVariable("LOKI__PORT")}",
+                    new List<LokiLabel> { new() { Key = "App", Value = "Console" } },
+                    credentials: null)
+                .CreateLogger();            
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -129,10 +140,12 @@ namespace ReportWorker
                 _model.WaitForConfirmsOrDie(TimeSpan.FromSeconds(5));
 
                 _model.BasicAck(eventArgs.DeliveryTag, false);
+
+                _log.Information($"Arquivo {FileName} gerado com sucesso");
             }
             catch (Exception ex)
             {
-                _logger.LogInformation("{log}", ex.ToString());
+                _log.Information("{log}", ex.ToString());
                 _model.BasicNack(eventArgs.DeliveryTag, false, false);
             }
         }
@@ -198,7 +211,7 @@ namespace ReportWorker
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to inject trace context.");
+                _log.Error(ex, "Failed to inject trace context.");
             }
         }
     }
